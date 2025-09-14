@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <script>
+    // Clear login form fields if page is loaded from cache (back/forward)
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            var voterForm = document.getElementById('voter-form');
+            if (voterForm) {
+                voterForm.reset();
+            }
+            var adminForm = document.getElementById('admin-form');
+            if (adminForm) {
+                adminForm.reset();
+            }
+        }
+    });
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voting System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.0/css/bootstrap.min.css">
+
+    <style>
+        body {
+            background-color: #f5f5f5;
+            font-family: Arial, sans-serif;
+            font-size: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .login-box {
+            background: #edfcf2;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            padding: 20px;
+            width: 500px;
+        }
+        
+        .login-box.admin-mode {
+            background: #f7edeb;
+        }
+        
+        .login-box.admin-mode .login-box-body {
+            background: #f7edeb;
+        }
+        
+        .login-box.admin-mode .btn-block {
+            background-color: #8c0a0a !important;
+        }
+        
+        .login-logo {
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .login-box-body {
+            padding: 30px;
+            background: #edfcf2;
+        }
+
+        .form-control {
+            border-radius: 4px;
+        }
+
+        .btn-toggle-mode {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #1f8f3f;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-toggle-mode:hover {
+            transform: scale(1.1);
+        }
+
+        /* ACID SQUAD badge */
+        .acid-squad-badge {
+            position: fixed;
+            left: 16px;
+            bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 10px;
+            padding: 6px 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 9999;
+            cursor: pointer;
+        }
+        .acid-squad-badge img {
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+        }
+        .acid-squad-badge span {
+            font-weight: 600;
+            color: #1f8f3f;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-box" id="login-container">
+        <div class="login-logo" id="login-logo">
+            <b>Voters Login 🗳️</b>
+        </div>
+
+        <div class="login-box-body">
+            <!-- Voter Login Form -->
+            <form action="login.php" method="POST" id="voter-form">
+                <div class="form-group">
+                    <input type="text" class="form-control" name="voter" placeholder="Username" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" class="form-control" name="password" placeholder="Password" required>
+                </div>
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary" style="background-color:#1f8f3f; min-width: 120px;" name="login"><i class="fa fa-sign-in"></i> Sign In</button>
+                </div>
+            </form>
+            
+            <!-- Admin Login Form (initially hidden) -->
+            <form action="login.php" method="POST" id="admin-form" style="display: none;">
+                <div class="form-group">
+                    <input type="text" class="form-control" name="username" placeholder="Username" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" class="form-control" name="password" placeholder="Password" required>
+                </div>
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary" style="background-color:#8c0a0a; min-width: 120px;" name="login">
+                        <i class="fa fa-sign-in"></i> Sign In
+                    </button>
+                </div>
+            </form>
+            <div id="login-msg" class="text-center text-muted mb-3"></div>
+    <script>
+    // Show error message if ?error=1 (voter) or ?error=admin (admin) is in the URL
+    document.addEventListener('DOMContentLoaded', function () {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('error') === '1') {
+                var err1 = document.createElement('div');
+                err1.id = 'login-error-message';
+                err1.className = 'text-danger text-center my-2';
+                err1.innerText = 'Username or password is not correct.';
+                var box1 = document.querySelector('.login-box-body');
+                box1.insertBefore(err1, box1.children[box1.children.length - 1]);
+            } else if (params.get('error') === 'admin') {
+                // Switch to admin form and show error
+                document.getElementById('login-container').classList.add('admin-mode');
+                document.getElementById('login-logo').innerHTML = '<b>Admin Login 🔐</b>';
+                var msg = document.getElementById('login-msg');
+                if (msg) msg.textContent = '';
+                document.getElementById('voter-form').style.display = 'none';
+                document.getElementById('admin-form').style.display = 'block';
+                var reg = document.getElementById('register-links');
+                if (reg) reg.style.display = 'none';
+                var toggleBtn = document.getElementById('toggle-mode-btn');
+                if (toggleBtn) {
+                    toggleBtn.style.backgroundColor = '#8c0a0a';
+                    toggleBtn.innerHTML = '<i class="fa fa-vote-yea"></i> Voter?';
+                }
+                var err2 = document.createElement('div');
+                err2.id = 'login-error-message';
+                err2.className = 'text-danger text-center my-2';
+                err2.innerText = 'Username or password is not correct.';
+                var box2 = document.querySelector('.login-box-body');
+                box2.insertBefore(err2, box2.children[box2.children.length - 1]);
+            }
+        } catch (e) {
+            // no-op safeguard
+        }
+    });
+    </script>
+            <p id="register-links" class="mt-3 text-center">
+                Not registered? <br>
+                <a href="voter_register.html">Register as Voter</a><br>
+                <a href="candidate_register.html">Register as Candidate</a>
+            </p>
+        </div>
+    </div>
+
+    <button id="toggle-mode-btn" class="btn-toggle-mode">
+        <i class="fa fa-user-shield"></i> Admin?
+    </button>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleBtn = document.getElementById('toggle-mode-btn');
+            const loginContainer = document.getElementById('login-container');
+            const loginLogo = document.getElementById('login-logo');
+            const loginMsg = document.getElementById('login-msg');
+            const registerLinks = document.getElementById('register-links');
+            const voterForm = document.getElementById('voter-form');
+            const adminForm = document.getElementById('admin-form');
+
+            let isAdminMode = false;
+
+            toggleBtn.addEventListener('click', () => {
+                isAdminMode = !isAdminMode;
+                // Hide error message when toggling forms
+                var errMsg = document.getElementById('login-error-message');
+                if (errMsg) errMsg.style.display = 'none';
+                if (isAdminMode) {
+                    loginContainer.classList.add('admin-mode');
+                    loginLogo.innerHTML = '<b>Admin Login 🔐</b>';
+                    if (loginMsg) loginMsg.textContent = '';
+                    voterForm.style.display = 'none';
+                    adminForm.style.display = 'block';
+                    if (registerLinks) registerLinks.style.display = 'none';
+                    toggleBtn.style.backgroundColor = '#8c0a0a';
+                    toggleBtn.innerHTML = '<i class="fa fa-vote-yea"></i> Voter?';
+                } else {
+                    loginContainer.classList.remove('admin-mode');
+                    loginLogo.innerHTML = '<b>Voters Login 🗳️</b>';
+                    if (loginMsg) loginMsg.textContent = '';
+                    voterForm.style.display = 'block';
+                    adminForm.style.display = 'none';
+                    if (registerLinks) registerLinks.style.display = '';
+                    toggleBtn.style.backgroundColor = '#1f8f3f';
+                    toggleBtn.innerHTML = '<i class="fa fa-user-shield"></i> Admin?';
+                }
+            });
+
+            // Open the 3 GitHub profiles in new tabs when clicking the badge
+            const badge = document.querySelector('.acid-squad-badge');
+            if (badge) {
+                badge.setAttribute('role', 'link');
+                badge.setAttribute('tabindex', '0');
+                const openProfiles = () => {
+                    const urls = [
+                        'https://github.com/6emrulhossain9',
+                        'https://github.com/Minhaz0100',
+                        'https://github.com/Rakib-Hasan-110'
+                    ];
+                    // Create hidden anchors and click them to open in new tabs
+                    urls.forEach((u) => {
+                        const a = document.createElement('a');
+                        a.href = u;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    });
+                };
+                badge.addEventListener('click', openProfiles);
+                badge.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openProfiles();
+                    }
+                });
+            }
+        });
+    </script>
+
+    <!-- ACID SQUAD badge bottom-left -->
+    <div class="acid-squad-badge" title="By ACID SQUAD">
+        <img src="logo/ACID_SQUAD_LOGO_212.png" alt="ACID SQUAD logo">
+        <span>By ACID SQUAD</span>
+    </div>
+</body>
+</html>

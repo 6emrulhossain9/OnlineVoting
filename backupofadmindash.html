@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .admin-container {
+            max-width: 1200px;
+            width: 100%;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .dashboard-header h2 {
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(to right, #4cc9f0, #f72585);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .dashboard-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+        }
+
+        .voter-management, .registered-voters {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 25px;
+            border-radius: 15px;
+        }
+
+        h3 {
+            font-size: 1.5em;
+            color: #4cc9f0;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            font-size: 1.1em;
+            background: linear-gradient(to right, #4361ee, #3a0ca3);
+            color: white;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: linear-gradient(to right, #3a0ca3, #4361ee);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .registered-voters h3 {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .registered-voters .search-bar {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        th {
+            color: #4cc9f0;
+        }
+
+        .table-actions button {
+            width: auto;
+            padding: 8px 12px;
+            font-size: 0.9em;
+            background: #f72585;
+        }
+
+        .logout-btn {
+            background: #dc3545;
+            margin-top: 20px;
+        }
+        
+        .logout-btn:hover {
+            background: #c82333;
+        }
+        
+        .message {
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #f72585;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-container">
+        <div class="dashboard-header">
+            <h2>Admin Dashboard</h2>
+            <button class="btn-primary logout-btn" id="admin-logout-btn">Logout</button>
+        </div>
+
+        <div class="dashboard-content">
+            <div class="voter-management">
+                <h3>Candidate Management</h3>
+                <p>Add new candidates to the system.</p>
+                <form id="add-candidate-form">
+                    <div class="form-group">
+                        <label for="candidateName">Candidate Name</label>
+                        <input type="text" id="candidateName" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Add Candidate</button>
+                </form>
+                <p class="message" id="add-candidate-message"></p>
+            </div>
+
+            <div class="registered-voters">
+                <h3>Registered Candidates</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="candidates-table-body">
+                        <!-- Candidate list will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let users = JSON.parse(localStorage.getItem('users')) || {
+                "admin": { password: "admin", role: "admin", voted: false },
+                "user1": { password: "user1", role: "user", voted: false }
+            };
+            let candidates = JSON.parse(localStorage.getItem('candidates')) || [
+                { id: 1, name: "Candidate A", votes: 0 },
+                { id: 2, name: "Candidate B", votes: 0 }
+            ];
+            
+            const saveState = () => {
+                localStorage.setItem('users', JSON.stringify(users));
+                localStorage.setItem('candidates', JSON.stringify(candidates));
+            };
+
+            const addCandidateForm = document.getElementById('add-candidate-form');
+            const candidateNameInput = document.getElementById('candidateName');
+            const candidatesTableBody = document.getElementById('candidates-table-body');
+            const addCandidateMessage = document.getElementById('add-candidate-message');
+            const logoutBtn = document.getElementById('admin-logout-btn');
+
+            const updateAdminDashboard = () => {
+                const currentUser = localStorage.getItem('currentUser');
+                if (!currentUser || users[currentUser].role !== 'admin') {
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                candidatesTableBody.innerHTML = '';
+                candidates.forEach((candidate, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${candidate.name}</td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn-primary" onclick="deleteCandidate(${candidate.id})">Delete</button>
+                            </div>
+                        </td>
+                    `;
+                    candidatesTableBody.appendChild(row);
+                });
+            };
+
+            window.deleteCandidate = (id) => {
+                candidates = candidates.filter(c => c.id !== id);
+                saveState();
+                updateAdminDashboard();
+            };
+
+            addCandidateForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const newCandidateName = candidateNameInput.value.trim();
+                if (newCandidateName) {
+                    const newId = candidates.length > 0 ? Math.max(...candidates.map(c => c.id)) + 1 : 1;
+                    candidates.push({ id: newId, name: newCandidateName, votes: 0 });
+                    saveState();
+                    updateAdminDashboard();
+                    candidateNameInput.value = '';
+                    addCandidateMessage.textContent = `Candidate '${newCandidateName}' added successfully!`;
+                    addCandidateMessage.style.color = '#4cc9f0';
+                } else {
+                    addCandidateMessage.textContent = 'Please enter a candidate name.';
+                    addCandidateMessage.style.color = '#f72585';
+                }
+            });
+
+            logoutBtn.addEventListener('click', () => {
+                localStorage.removeItem('currentUser');
+                window.location.href = 'index.html';
+            });
+
+            const currentUser = localStorage.getItem('currentUser');
+            if (currentUser && users[currentUser] && users[currentUser].role === 'admin') {
+                updateAdminDashboard();
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>

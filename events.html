@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Events - Admin Panel</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .box {
+            background: white;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgb(0 0 0 / 0.1);
+        }
+        .table thead th {
+            background-color: #007bff;
+            color: white;
+        }
+        /* Navbar styles */
+    .navbar-custom { margin-bottom: 30px; }
+    /* Admin topbar to match dashboard */
+    .topbar { background:#007bff; color:#000; font-weight:700; border-radius:10px; margin-bottom:30px; min-height:64px; }
+    .topbar a { color:#000 !important; font-weight:700; padding:8px 10px; border-radius:6px; display:inline-block; }
+    .topbar a:hover { background:rgba(0,0,0,0.08); }
+    .topbar a.active { background:rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+
+        <!-- Custom Top Bar -->
+        <div class="d-flex align-items-center justify-content-between px-4 py-2 topbar shadow-sm">
+            <div class="d-flex align-items-center">
+                <nav>
+                    <a href="admin_dashboard.html" class="mx-2" style="text-decoration:none;">Dashboard</a>
+                    <a href="users.html" class="mx-2" style="text-decoration:none;">Users</a>
+                    <a href="candidates.html" class="mx-2" style="text-decoration:none;">Candidates</a>
+                    <a href="events.html" class="mx-2" style="text-decoration:none;">Events</a>
+                </nav>
+            </div>
+            <div class="d-flex align-items-center">
+                <div class="dropdown">
+                    <button class="btn btn-link d-flex align-items-center dropdown-toggle" type="button" id="adminProfileDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border-radius: 20px; color:#000; font-weight:700;">
+                        <i class="fa fa-user" style="margin-right:8px;"></i>
+                        <span>Admin</span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="adminProfileDropdown">
+                        <a class="dropdown-item" href="#" id="logout-btn">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <div class="container-fluid">
+        <h1 class="mb-4">Events</h1>
+
+        <div class="box">
+            <h4>Add Event</h4>
+            <form id="add-event-form" class="form-inline mb-3">
+                <input type="text" id="event-title" class="form-control mr-2" placeholder="Event Title" required />
+                <input type="datetime-local" id="event-start" class="form-control mr-2" required />
+                <input type="datetime-local" id="event-end" class="form-control mr-2" required />
+                <button type="submit" class="btn btn-primary">Add Event</button>
+            </form>
+            <div id="event-message" class="mb-3"></div>
+
+            <table class="table table-bordered" id="events-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- jQuery and Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+// Highlight current page in topbar
+(function highlightActiveLink(){
+    try {
+        var current = location.pathname.split('/').pop();
+        document.querySelectorAll('.topbar nav a').forEach(function(a){
+            var href = a.getAttribute('href');
+            if (href === current) {
+                a.classList.add('active');
+                a.setAttribute('aria-current', 'page');
+            }
+        });
+    } catch(e) { /* noop */ }
+})();
+
+// Only allow access if admin is logged in
+if (!sessionStorage.getItem('admin_logged_in')) {
+    window.location.href = 'index.html';
+}
+
+        const eventsTableBody = document.querySelector('#events-table tbody');
+        const eventMessage = document.getElementById('event-message');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        async function fetchEvents() {
+            try {
+                const res = await fetch('get_events.php');
+                const events = await res.json();
+                eventsTableBody.innerHTML = '';
+                events.forEach((e, idx) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${idx + 1}</td>
+                        <td>${e.title}</td>
+                        <td>${new Date(e.start_time).toLocaleString()}</td>
+                        <td>${new Date(e.end_time).toLocaleString()}</td>
+                        <td><button class="btn text-danger btn-delete-event" data-id="${e.id}"><i class="fa fa-trash"></i> Delete</button></td>
+                    `;
+                    eventsTableBody.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Error fetching events:', error);
+            }
+        }
+
+        document.getElementById('add-event-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            eventMessage.textContent = '';
+            const title = document.getElementById('event-title').value.trim();
+            const start_time = document.getElementById('event-start').value;
+            const end_time = document.getElementById('event-end').value;
+
+            if (!title || !start_time || !end_time) {
+                eventMessage.textContent = 'Please fill in all fields.';
+                eventMessage.style.color = 'red';
+                return;
+            }
+            if (new Date(start_time) >= new Date(end_time)) {
+                eventMessage.textContent = 'Start time must be before end time.';
+                eventMessage.style.color = 'red';
+                return;
+            }
+
+            try {
+                const res = await fetch('add_event.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `title=${encodeURIComponent(title)}&start_time=${encodeURIComponent(start_time)}&end_time=${encodeURIComponent(end_time)}`
+                });
+                const text = await res.text();
+                eventMessage.textContent = text;
+                eventMessage.style.color = text.toLowerCase().includes('success') ? 'green' : 'red';
+                if (text.toLowerCase().includes('success')) {
+                    e.target.reset();
+                    fetchEvents();
+                }
+            } catch (error) {
+                eventMessage.textContent = 'Failed to add event.';
+                eventMessage.style.color = 'red';
+            }
+        });
+
+        // Logout button handler (works for both old and new topbar)
+        $(document).on('click', '#logout-btn', async function(e) {
+            e.preventDefault();
+            await fetch('logout.php');
+            window.location.href = 'index.html';
+        });
+
+        // Delete event handler (delegated)
+        document.addEventListener('click', async function(e){
+            const btn = e.target.closest('.btn-delete-event');
+            if (!btn) return;
+            const id = btn.getAttribute('data-id');
+            if (!id) return;
+            if (!confirm('Delete this event? This will also remove its candidates and votes.')) return;
+            try {
+                const res = await fetch('delete_event.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `id=${encodeURIComponent(id)}`
+                });
+                const text = await res.text();
+                eventMessage.textContent = text;
+                eventMessage.style.color = text.toLowerCase().includes('success') ? 'green' : 'red';
+                fetchEvents();
+            } catch (err) {
+                eventMessage.textContent = 'Failed to delete event.';
+                eventMessage.style.color = 'red';
+            }
+        });
+
+        fetchEvents();
+    </script>
+</body>
+</html>

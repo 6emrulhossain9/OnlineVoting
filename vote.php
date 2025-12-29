@@ -42,19 +42,16 @@ if (isset($_POST['votes'])) {
                 throw new Exception('Invalid candidate or event id.');
             }
 
-            // Check event time window (must be currently active)
-            $stmt_evt = $conn->prepare("SELECT start_time, end_time FROM events WHERE id = ?");
+            // Check event window using database time (avoids PHP timezone mismatch)
+            $stmt_evt = $conn->prepare("SELECT start_time, end_time, (NOW() < start_time) AS not_started, (NOW() > end_time) AS is_closed FROM events WHERE id = ?");
             $stmt_evt->bind_param("i", $event_id);
             $stmt_evt->execute();
             $res_evt = $stmt_evt->get_result();
             $evt = $res_evt ? $res_evt->fetch_assoc() : null;
             $stmt_evt->close();
             if (!$evt) { throw new Exception('Event not found.'); }
-            $now = new DateTime('now');
-            $start = new DateTime($evt['start_time']);
-            $end = new DateTime($evt['end_time']);
-            if ($now < $start) { throw new Exception('Voting has not started for one of the selected events.'); }
-            if ($now > $end) { throw new Exception('Voting is closed for one of the selected events.'); }
+            if ((int)$evt['not_started'] === 1) { throw new Exception('Voting has not started for one of the selected events.'); }
+            if ((int)$evt['is_closed'] === 1) { throw new Exception('Voting is closed for one of the selected events.'); }
 
             // Already voted in this event?
             $stmt_check = $conn->prepare("SELECT COUNT(*) AS count FROM votes WHERE user_id = ? AND event_id = ?");
@@ -108,19 +105,16 @@ if ($candidate_id <= 0 || $event_id <= 0) {
     exit;
 }
 
-// Check event time window (must be currently active)
-$stmt_evt = $conn->prepare("SELECT start_time, end_time FROM events WHERE id = ?");
+// Check event time window (must be currently active) using database time
+$stmt_evt = $conn->prepare("SELECT start_time, end_time, (NOW() < start_time) AS not_started, (NOW() > end_time) AS is_closed FROM events WHERE id = ?");
 $stmt_evt->bind_param("i", $event_id);
 $stmt_evt->execute();
 $res_evt = $stmt_evt->get_result();
 $evt = $res_evt ? $res_evt->fetch_assoc() : null;
 $stmt_evt->close();
 if (!$evt) { echo "Event not found."; exit; }
-$now = new DateTime('now');
-$start = new DateTime($evt['start_time']);
-$end = new DateTime($evt['end_time']);
-if ($now < $start) { echo "Voting has not started for this event."; exit; }
-if ($now > $end) { echo "Voting is closed for this event."; exit; }
+if ((int)$evt['not_started'] === 1) { echo "Voting has not started for this event."; exit; }
+if ((int)$evt['is_closed'] === 1) { echo "Voting is closed for this event."; exit; }
 
 // Check if user has already voted in this specific event
 $stmt_check = $conn->prepare("SELECT COUNT(*) AS count FROM votes WHERE user_id = ? AND event_id = ?");
